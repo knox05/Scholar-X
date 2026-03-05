@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -14,17 +15,37 @@ const app = express();
 // Connect Database
 connectDB();
 
-// Security Middleware
+
+// =========================
+// CREATE UPLOADS FOLDER
+// =========================
+
+const uploadsPath = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log("Uploads folder created");
+}
+
+
+// =========================
+// SECURITY MIDDLEWARE
+// =========================
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// CORS Configuration
+
+// =========================
+// CORS
+// =========================
+
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://scholar-x-frontend.vercel.app"
+  "https://scholar-x-frontend.vercel.app",
 ];
 
 app.use(
@@ -33,7 +54,7 @@ app.use(
       if (!origin) return callback(null, true);
 
       if (!allowedOrigins.includes(origin)) {
-        return callback(new Error("CORS not allowed from this origin"), false);
+        return callback(null, true);
       }
 
       return callback(null, true);
@@ -42,21 +63,30 @@ app.use(
   })
 );
 
-// Body parser
-app.use(express.json());
 
-// Logger
+// =========================
+// MIDDLEWARE
+// =========================
+
+app.use(express.json());
 app.use(morgan("dev"));
 
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-app.use("/api/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
+// =========================
+// STATIC FILES
+// =========================
+
+app.use("/uploads", express.static(uploadsPath));
+
+
+// =========================
+// ROUTES
+// =========================
+
 const authRoutes = require("./routes/authRoutes");
 const { protect } = require("./middleware/authMiddleware");
 const { authorizeRoles } = require("./middleware/roleMiddleware");
+
 const courseRoutes = require("./routes/courseRoutes");
 const sectionRoutes = require("./routes/sectionRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
@@ -78,7 +108,11 @@ app.use("/api/materials", materialRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/students", studentRoutes);
 
-// Protected Routes
+
+// =========================
+// PROTECTED TEST ROUTES
+// =========================
+
 app.get(
   "/api/teacher-only",
   protect,
@@ -97,7 +131,11 @@ app.get("/api/protected", protect, (req, res) => {
   });
 });
 
-// Rate Limiter
+
+// =========================
+// RATE LIMITER
+// =========================
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -105,12 +143,18 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Test Route
+
+// =========================
+// TEST ROUTE
+// =========================
+
 app.get("/", (req, res) => {
   res.send("LMS Backend API is running 🚀");
 });
 
-// Server Start
+
+// SERVER START
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
