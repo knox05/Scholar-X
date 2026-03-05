@@ -20,7 +20,17 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://scholar-x-frontend.vercel.app/"   // your frontend URL
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
