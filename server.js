@@ -7,39 +7,56 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
 
-
 dotenv.config();
 
 const app = express();
 
+/* -------------------- DATABASE -------------------- */
 
+connectDB();
 
-// Security Middleware
+/* -------------------- SECURITY -------------------- */
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
+
+/* -------------------- CORS -------------------- */
+
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://scholar-x-frontend.vercel.app/"   // your frontend URL
+  "https://scholar-x-frontend.vercel.app"
 ];
 
 app.use(
   cors({
     origin: allowedOrigins,
-    credentials: true
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
+
+/* -------------------- MIDDLEWARE -------------------- */
+
 app.use(express.json());
 app.use(morgan("dev"));
+
+/* -------------------- FILE UPLOADS -------------------- */
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-app.use("/api/uploads", express.static(path.join(__dirname, "uploads")));
+
+/* -------------------- ROUTES -------------------- */
 
 const authRoutes = require("./routes/authRoutes");
 const { protect } = require("./middleware/authMiddleware");
 const { authorizeRoles } = require("./middleware/roleMiddleware");
+
 const courseRoutes = require("./routes/courseRoutes");
 const sectionRoutes = require("./routes/sectionRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
@@ -49,8 +66,6 @@ const assignmentRoutes = require("./routes/assignmentRoutes");
 const materialRoutes = require("./routes/materialRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const studentRoutes = require("./routes/studentRoutes");
-
-
 
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
@@ -63,8 +78,9 @@ app.use("/api/materials", materialRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/students", studentRoutes);
 
+/* -------------------- PROTECTED ROUTES -------------------- */
 
-// Teacher-only route
+// Teacher only
 app.get(
   "/api/teacher-only",
   protect,
@@ -75,30 +91,34 @@ app.get(
     });
   }
 );
+
+// Auth test
 app.get("/api/protected", protect, (req, res) => {
-   res.json({
-      message: "You accessed protected route 🎉",
-      user: req.user
-   });
+  res.json({
+    message: "You accessed protected route 🎉",
+    user: req.user
+  });
 });
 
+/* -------------------- RATE LIMIT -------------------- */
 
-
-// Rate Limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
 });
+
 app.use(limiter);
 
-// Test Route
+/* -------------------- ROOT ROUTE -------------------- */
+
 app.get("/", (req, res) => {
   res.send("LMS Backend API is running 🚀");
 });
 
+/* -------------------- SERVER -------------------- */
+
 const PORT = process.env.PORT || 5000;
 
-connectDB();
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} 🚀`);
 });
